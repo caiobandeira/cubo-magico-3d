@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cubo Mágico 3D (Three.js)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    canvas { display: block; }
+
+    #info {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px 20px;
+      border-radius: 8px;
+      text-align: center;
+      pointer-events: none;
+    }
+    #info span { color: #ffdd55; font-weight: bold; }
+
+    #painel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 18px;
+      border-radius: 8px;
+    }
+    #painel button {
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #painel button:hover { background: #3a3a3a; }
+    #contador { color: #ccc; font-size: 14px; }
+    #contador b { color: #ffdd55; }
+  </style>
+</head>
+<body>
+
+  <div id="info">
+    <span>U D R L F B</span> giram as faces &nbsp;|&nbsp;
+    <span>Shift + tecla</span> gira ao contrário &nbsp;|&nbsp;
+    <span>Mouse</span> orbita a câmera
+  </div>
+
+  <div id="painel">
+    <button id="btEmbaralhar">Embaralhar</button>
+    <button id="btResetar">Resetar</button>
+    <span id="contador">Movimentos: <b>0</b></span>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+
+  // ================================================================
+  // PROJETO - CUBO MAGICO 3D
+  // Computacao Grafica - Three.js
+  // Integrantes: Caio de Araujo e Guilherme Marques
+  //
+  // Ideia geral: o cubo e formado por 27 cubinhos soltos na cena.
+  // Para girar uma face, os 9 cubinhos daquela face sao colocados
+  // dentro de um THREE.Group (o pivo), o grupo gira, e no fim os
+  // cubinhos voltam para a cena na nova posicao.
+  // ================================================================
+
+  // --- PILAR 1: SCENE ---
+  const scene = new THREE.Scene();
+
+  // --- PILAR 2: CAMERA ---
+  const camera = new THREE.PerspectiveCamera(
+    45,                                     // campo de visao (FOV) em graus
+    window.innerWidth / window.innerHeight,  // aspecto da janela
+    0.1,                                    // near
+    1000                                    // far
+  );
+  camera.position.set(5, 5, 7); // camera na diagonal, pra enxergar 3 faces ao mesmo tempo
+
+  // --- PILAR 3: RENDERER ---
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x111111);
+  document.body.appendChild(renderer.domElement);
+
+  // --- ORBITCONTROLS: gira a camera com o mouse ---
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;  // deixa o movimento do mouse mais suave
+  controls.minDistance = 6;       // nao deixa a camera entrar dentro do cubo
+  controls.maxDistance = 20;      // nem se afastar demais
+
+  // ================================================================
+  // GRUPOS PRINCIPAIS
+  // cubo  = guarda os 27 cubinhos quando eles estao parados
+  // pivo  = grupo temporario que recebe os 9 cubinhos da face que gira
+  // ================================================================
+  const cubo = new THREE.Group();
+  scene.add(cubo);
+
+  const pivo = new THREE.Group();
+  cubo.add(pivo);
+
+  // ================================================================
+  // CORES DAS FACES (padrao do cubo magico de verdade)
+  // ================================================================
+  const CORES = {
+    direita:  0xc41e3a, // vermelho   (+X)
+    esquerda: 0xff5800, // laranja    (-X)
+    cima:     0xffffff, // branco     (+Y)
+    baixo:    0xffd500, // amarelo    (-Y)
+    frente:   0x009e60, // verde      (+Z)
+    tras:     0x0051ba  // azul       (-Z)
+  };
+  const PLASTICO = 0x101010; // cor das faces internas (as que nao aparecem)
+
+  // ================================================================
+  // MONTAGEM DO CUBO 3x3x3
+  // Tres lacos encaixados geram as 27 combinacoes de x, y e z.
+  // Cada cubinho recebe 6 materiais, um por face.
+  //
+  // A ordem dos materiais no BoxGeometry e sempre:
+  // [0]=+X direita  [1]=-X esquerda  [2]=+Y cima
+  // [3]=-Y baixo    [4]=+Z frente    [5]=-Z tras
+  //
+  // Um cubinho so ganha cor na face que esta virada pra fora.
+  // Ex: o cubinho de x=1 esta na face direita, entao o material [0]
+  // fica vermelho; os outros ficam pretos.
+  // ================================================================
+  const cubinhos = []; // guarda os 27 cubinhos pra poder procurar depois
+
+  const geometria = new THREE.BoxGeometry(0.95, 0.95, 0.95); // 0.95 deixa uma folga entre eles
+
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      for (let z = -1; z <= 1; z++) {
+
+        const materiais = [
+          new THREE.MeshBasicMaterial({ color: x ===  1 ? CORES.direita  : PLASTICO }),
+          new THREE.MeshBasicMaterial({ color: x === -1 ? CORES.esquerda : PLASTICO }),
+          new THREE.MeshBasicMaterial({ color: y ===  1 ? CORES.cima     : PLASTICO }),
+          new THREE.MeshBasicMaterial({ color: y === -1 ? CORES.baixo    : PLASTICO }),
+          new THREE.MeshBasicMaterial({ color: z ===  1 ? CORES.frente   : PLASTICO }),
+          new THREE.MeshBasicMaterial({ color: z === -1 ? CORES.tras     : PLASTICO })
+        ];
+
+        const cubinho = new THREE.Mesh(geometria, materiais);
+        cubinho.position.set(x, y, z); // posicao inteira: -1, 0 ou 1 em cada eixo
+        cubo.add(cubinho);
+        cubinhos.push(cubinho);
+      }
+    }
+  }
+
+  // ================================================================
+  // DEFINICAO DOS MOVIMENTOS
+  // Cada letra e um movimento padrao do cubo magico:
+  //   U = Up (cima)      D = Down (baixo)
+  //   R = Right (direita) L = Left (esquerda)
+  //   F = Front (frente)  B = Back (tras)
+  //
+  // eixo    = em volta de qual eixo a face gira
+  // camada  = qual fatia do cubo se move (+1, 0 ou -1 naquele eixo)
+  // sentido = +1 ou -1, pra que o giro fique no sentido horario
+  //           quando a gente olha de frente pra aquela face
+  // ================================================================
+  const MOVIMENTOS = {
+    U: { eixo: "y", camada:  1, sentido: -1 },
+    D: { eixo: "y", camada: -1, sentido:  1 },
+    R: { eixo: "x", camada:  1, sentido: -1 },
+    L: { eixo: "x", camada: -1, sentido:  1 },
+    F: { eixo: "z", camada:  1, sentido: -1 },
+    B: { eixo: "z", camada: -1, sentido:  1 }
+  };
+
+  // ================================================================
+  // ESTADO DA ANIMACAO
+  // So pode ter um giro acontecendo por vez, senao os cubinhos
+  // se perdem no meio do caminho.
+  // ================================================================
+  let girando = false;     // tem um giro em andamento?
+  let eixoAtual = "y";     // eixo do giro atual
+  let anguloAlvo = 0;      // angulo final do giro (+90 ou -90 graus em radianos)
+  let t = 0;               // vai de 0 ate 1 durante a animacao
+  const VELOCIDADE = 0.05; // quanto t cresce por frame (maior = giro mais rapido)
+
+  let fila = [];           // movimentos esperando a vez (usado no embaralhar)
+  let contador = 0;        // quantos movimentos o jogador ja fez
+  let embaralhando = false;
+
+  const elContador = document.querySelector("#contador b");
+
+  // ================================================================
+  // COMECAR UM GIRO
+  // nome      = letra do movimento ("U", "R", ...)
+  // invertido = true gira pro lado contrario (Shift)
+  // conta     = se esse movimento entra no contador
+  // ================================================================
+  function girarFace(nome, invertido, conta) {
+    if (girando) return;              // ja tem um giro rolando, ignora
+    const mov = MOVIMENTOS[nome];
+    if (!mov) return;
+
+    // 1) zera o pivo (ele e reaproveitado a cada giro)
+    pivo.rotation.set(0, 0, 0);
+
+    // 2) coloca dentro do pivo os cubinhos que estao naquela camada.
+    //    attach() move o objeto de pai mantendo a posicao que ele
+    //    aparenta ter na tela - e isso que evita o cubo "explodir".
+    for (const c of cubinhos) {
+      if (Math.round(c.position[mov.eixo]) === mov.camada) {
+        pivo.attach(c);
+      }
+    }
+
+    // 3) prepara os valores da animacao
+    eixoAtual = mov.eixo;
+    anguloAlvo = (Math.PI / 2) * mov.sentido * (invertido ? -1 : 1);
+    t = 0;
+    girando = true;
+
+    if (conta) {
+      contador++;
+      elContador.textContent = contador;
+    }
+  }
+
+  // ================================================================
+  // TERMINAR O GIRO
+  // Devolve os cubinhos pro grupo "cubo" e arredonda as posicoes.
+  // O arredondamento e importante: depois de varios giros as contas
+  // em ponto flutuante deixam valores tipo 0.9999997, e a busca por
+  // camada (=== 1) pararia de funcionar.
+  // ================================================================
+  function terminarGiro() {
+    pivo.rotation[eixoAtual] = anguloAlvo; // garante o angulo exato no fim
+
+    // pega uma copia da lista de filhos, porque attach() altera o array
+    const filhos = pivo.children.slice();
+
+    for (const c of filhos) {
+      cubo.attach(c); // volta pro grupo do cubo mantendo a posicao na tela
+      c.position.x = Math.round(c.position.x);
+      c.position.y = Math.round(c.position.y);
+      c.position.z = Math.round(c.position.z);
+    }
+
+    pivo.rotation.set(0, 0, 0);
+    girando = false;
+  }
+
+  // ================================================================
+  // EMBARALHAR (extra)
+  // Sorteia 20 movimentos e joga todos na fila. O loop vai puxando
+  // um por um, entao o embaralhar aparece animado na tela.
+  // ================================================================
+  function embaralhar() {
+    if (girando || fila.length > 0) return;
+
+    const letras = ["U", "D", "R", "L", "F", "B"];
+    for (let i = 0; i < 20; i++) {
+      fila.push({
+        nome: letras[Math.floor(Math.random() * 6)],
+        invertido: Math.random() < 0.5
+      });
+    }
+    embaralhando = true;
+  }
+
+  // ================================================================
+  // RESETAR
+  // Volta cada cubinho pra posicao e rotacao originais.
+  // Como os cubinhos foram criados na ordem x, y, z, da pra
+  // reconstruir a posicao de cada um a partir do indice.
+  // ================================================================
+  function resetar() {
+    if (girando) return;
+    fila = [];
+    embaralhando = false;
+
+    let i = 0;
+    for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+        for (let z = -1; z <= 1; z++) {
+          const c = cubinhos[i];
+          cubo.attach(c);                 // garante que nao ficou nenhum no pivo
+          c.position.set(x, y, z);        // posicao original
+          c.rotation.set(0, 0, 0);        // tira as rotacoes acumuladas
+          i++;
+        }
+      }
+    }
+
+    contador = 0;
+    elContador.textContent = contador;
+  }
+
+  // ================================================================
+  // CONTROLES DE TECLADO
+  // Shift junto com a letra inverte o sentido do giro.
+  // ================================================================
+  document.addEventListener("keydown", (e) => {
+    const letra = e.key.toUpperCase();
+    if (MOVIMENTOS[letra]) {
+      girarFace(letra, e.shiftKey, true);
+    }
+  });
+
+  // ================================================================
+  // BOTOES
+  // ================================================================
+  document.getElementById("btEmbaralhar").addEventListener("click", embaralhar);
+  document.getElementById("btResetar").addEventListener("click", resetar);
+
+  // ================================================================
+  // REDIMENSIONAMENTO DA JANELA
+  // ================================================================
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ================================================================
+  // LOOP DE ANIMACAO
+  // ================================================================
+  function animate() {
+    requestAnimationFrame(animate);
+
+    if (girando) {
+      t += VELOCIDADE;
+
+      if (t >= 1) {
+        terminarGiro();
+      } else {
+        // INTERPOLACAO DO ANGULO
+        // t cresce de forma constante, mas a formula abaixo (smoothstep)
+        // faz o giro comecar devagar, acelerar no meio e frear no fim.
+        const suave = t * t * (3 - 2 * t);
+        pivo.rotation[eixoAtual] = anguloAlvo * suave;
+      }
+    }
+
+    // se nao tem giro rolando e a fila tem movimento esperando, puxa o proximo
+    if (!girando && fila.length > 0) {
+      const prox = fila.shift();
+      girarFace(prox.nome, prox.invertido, false);
+
+      // acabou de embaralhar: zera o contador pro jogador comecar do zero
+      if (fila.length === 0 && embaralhando) {
+        embaralhando = false;
+        contador = 0;
+        elContador.textContent = contador;
+      }
+    }
+
+    controls.update();              // atualiza a camera do OrbitControls
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  </script>
+</body>
+</html>
