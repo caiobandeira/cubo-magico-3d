@@ -1,6 +1,6 @@
-# Cubo Mágico 3D — Three.js
+# Cubo mágico 3D em three.js
 
-Projeto da disciplina de Computação Gráfica.
+Projeto Computação Gráfica.
 
 **Integrantes:** Caio de Araújo e Guilherme Marques
 
@@ -29,7 +29,7 @@ página abrir.
 | Botão Embaralhar | Sorteia 20 movimentos e executa todos animados |
 | Botão Resetar | Volta o cubo para o estado resolvido |
 
-## O que foi implementado
+## O que implementamos
 
 **Requisitos mínimos**
 
@@ -51,7 +51,7 @@ página abrir.
 
 ---
 
-# Explicação do código
+# Explicação codigo
 
 ## 1. Os três pilares
 
