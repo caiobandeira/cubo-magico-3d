@@ -67,17 +67,6 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script>
 
-  // ================================================================
-  // PROJETO - CUBO MAGICO 3D
-  // Computacao Grafica - Three.js
-  // Integrantes: Caio de Araujo e Guilherme Marques
-  //
-  // Ideia geral: o cubo e formado por 27 cubinhos soltos na cena.
-  // Para girar uma face, os 9 cubinhos daquela face sao colocados
-  // dentro de um THREE.Group (o pivo), o grupo gira, e no fim os
-  // cubinhos voltam para a cena na nova posicao.
-  // ================================================================
-
   // --- PILAR 1: SCENE ---
   const scene = new THREE.Scene();
 
@@ -102,20 +91,12 @@
   controls.minDistance = 6;       // nao deixa a camera entrar dentro do cubo
   controls.maxDistance = 20;      // nem se afastar demais
 
-  // ================================================================
-  // GRUPOS PRINCIPAIS
-  // cubo  = guarda os 27 cubinhos quando eles estao parados
-  // pivo  = grupo temporario que recebe os 9 cubinhos da face que gira
-  // ================================================================
   const cubo = new THREE.Group();
   scene.add(cubo);
 
   const pivo = new THREE.Group();
   cubo.add(pivo);
 
-  // ================================================================
-  // CORES DAS FACES (padrao do cubo magico de verdade)
-  // ================================================================
   const CORES = {
     direita:  0xc41e3a, // vermelho   (+X)
     esquerda: 0xff5800, // laranja    (-X)
@@ -126,19 +107,6 @@
   };
   const PLASTICO = 0x101010; // cor das faces internas (as que nao aparecem)
 
-  // ================================================================
-  // MONTAGEM DO CUBO 3x3x3
-  // Tres lacos encaixados geram as 27 combinacoes de x, y e z.
-  // Cada cubinho recebe 6 materiais, um por face.
-  //
-  // A ordem dos materiais no BoxGeometry e sempre:
-  // [0]=+X direita  [1]=-X esquerda  [2]=+Y cima
-  // [3]=-Y baixo    [4]=+Z frente    [5]=-Z tras
-  //
-  // Um cubinho so ganha cor na face que esta virada pra fora.
-  // Ex: o cubinho de x=1 esta na face direita, entao o material [0]
-  // fica vermelho; os outros ficam pretos.
-  // ================================================================
   const cubinhos = []; // guarda os 27 cubinhos pra poder procurar depois
 
   const geometria = new THREE.BoxGeometry(0.95, 0.95, 0.95); // 0.95 deixa uma folga entre eles
