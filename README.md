@@ -293,37 +293,4 @@ cubinhos virados e as cores trocadas.
 - Acertar o sinal do `sentido` de cada face, pra que o giro saísse no sentido
   horário olhando de frente para cada uma delas.
 
----
 
-# Perguntas frequentes sobre o código
-
-**Por que usar um Group em vez de girar cada cubinho?**
-Porque a face gira em volta do centro do cubo, não em volta do centro de cada
-cubinho. Colocando os 9 dentro de um grupo e girando o grupo, cada um descreve
-o arco correto automaticamente — é a mesma ideia da Lua orbitando a Terra no
-exemplo do sistema solar.
-
-**Qual a diferença entre `add` e `attach`?**
-`add` troca o pai mantendo a posição local, então o objeto salta na tela.
-`attach` troca o pai mantendo a posição no mundo, recalculando a posição local
-pra compensar. Quando os cubinhos saem do pivô girado, só o `attach` preserva
-o resultado visual.
-
-**Por que arredondar as posições?**
-Porque as contas em ponto flutuante acumulam erro a cada giro. Sem o
-arredondamento, depois de alguns movimentos a posição vira 0.9999997 e a
-seleção dos cubinhos da face para de funcionar.
-
-**Como funciona a animação suave?**
-Uma variável `t` vai de 0 a 1 ao longo do giro. O ângulo aplicado não é
-`anguloAlvo * t`, e sim `anguloAlvo * (t·t·(3−2t))`. Essa curva faz o giro
-começar devagar, acelerar e frear.
-
-**Por que `MeshBasicMaterial` e não um material com iluminação?**
-Porque iluminação não foi vista em aula ainda, e o cubo mágico não precisa:
-as cores são chapadas mesmo, e o que separa visualmente uma face da outra são
-as frestas pretas entre os cubinhos.
-
-**Onde está a hierarquia de transformações?**
-Na estrutura `scene → cubo → pivô → cubinhos`. Durante o giro os 9 cubinhos da
-face são filhos do pivô, e a rotação do pivô se propaga para todos eles.
