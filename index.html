@@ -67,10 +67,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script>
 
-  // --- PILAR 1: SCENE ---
   const scene = new THREE.Scene();
 
-  // --- PILAR 2: CAMERA ---
   const camera = new THREE.PerspectiveCamera(
     45,                                     // campo de visao (FOV) em graus
     window.innerWidth / window.innerHeight,  // aspecto da janela
@@ -132,18 +130,6 @@
     }
   }
 
-  // ================================================================
-  // DEFINICAO DOS MOVIMENTOS
-  // Cada letra e um movimento padrao do cubo magico:
-  //   U = Up (cima)      D = Down (baixo)
-  //   R = Right (direita) L = Left (esquerda)
-  //   F = Front (frente)  B = Back (tras)
-  //
-  // eixo    = em volta de qual eixo a face gira
-  // camada  = qual fatia do cubo se move (+1, 0 ou -1 naquele eixo)
-  // sentido = +1 ou -1, pra que o giro fique no sentido horario
-  //           quando a gente olha de frente pra aquela face
-  // ================================================================
   const MOVIMENTOS = {
     U: { eixo: "y", camada:  1, sentido: -1 },
     D: { eixo: "y", camada: -1, sentido:  1 },
@@ -153,11 +139,6 @@
     B: { eixo: "z", camada: -1, sentido:  1 }
   };
 
-  // ================================================================
-  // ESTADO DA ANIMACAO
-  // So pode ter um giro acontecendo por vez, senao os cubinhos
-  // se perdem no meio do caminho.
-  // ================================================================
   let girando = false;     // tem um giro em andamento?
   let eixoAtual = "y";     // eixo do giro atual
   let anguloAlvo = 0;      // angulo final do giro (+90 ou -90 graus em radianos)
@@ -170,21 +151,15 @@
 
   const elContador = document.querySelector("#contador b");
 
-  // ================================================================
-  // COMECAR UM GIRO
-  // nome      = letra do movimento ("U", "R", ...)
-  // invertido = true gira pro lado contrario (Shift)
-  // conta     = se esse movimento entra no contador
-  // ================================================================
   function girarFace(nome, invertido, conta) {
     if (girando) return;              // ja tem um giro rolando, ignora
     const mov = MOVIMENTOS[nome];
     if (!mov) return;
 
-    // 1) zera o pivo (ele e reaproveitado a cada giro)
+    // zera o pivo (ele e reaproveitado a cada giro)
     pivo.rotation.set(0, 0, 0);
 
-    // 2) coloca dentro do pivo os cubinhos que estao naquela camada.
+    //  coloca dentro do pivo os cubinhos que estao naquela camada.
     //    attach() move o objeto de pai mantendo a posicao que ele
     //    aparenta ter na tela - e isso que evita o cubo "explodir".
     for (const c of cubinhos) {
@@ -193,7 +168,7 @@
       }
     }
 
-    // 3) prepara os valores da animacao
+    // prepara os valores da animacao
     eixoAtual = mov.eixo;
     anguloAlvo = (Math.PI / 2) * mov.sentido * (invertido ? -1 : 1);
     t = 0;
@@ -205,13 +180,6 @@
     }
   }
 
-  // ================================================================
-  // TERMINAR O GIRO
-  // Devolve os cubinhos pro grupo "cubo" e arredonda as posicoes.
-  // O arredondamento e importante: depois de varios giros as contas
-  // em ponto flutuante deixam valores tipo 0.9999997, e a busca por
-  // camada (=== 1) pararia de funcionar.
-  // ================================================================
   function terminarGiro() {
     pivo.rotation[eixoAtual] = anguloAlvo; // garante o angulo exato no fim
 
@@ -229,11 +197,6 @@
     girando = false;
   }
 
-  // ================================================================
-  // EMBARALHAR (extra)
-  // Sorteia 20 movimentos e joga todos na fila. O loop vai puxando
-  // um por um, entao o embaralhar aparece animado na tela.
-  // ================================================================
   function embaralhar() {
     if (girando || fila.length > 0) return;
 
@@ -247,12 +210,6 @@
     embaralhando = true;
   }
 
-  // ================================================================
-  // RESETAR
-  // Volta cada cubinho pra posicao e rotacao originais.
-  // Como os cubinhos foram criados na ordem x, y, z, da pra
-  // reconstruir a posicao de cada um a partir do indice.
-  // ================================================================
   function resetar() {
     if (girando) return;
     fila = [];
@@ -275,10 +232,6 @@
     elContador.textContent = contador;
   }
 
-  // ================================================================
-  // CONTROLES DE TECLADO
-  // Shift junto com a letra inverte o sentido do giro.
-  // ================================================================
   document.addEventListener("keydown", (e) => {
     const letra = e.key.toUpperCase();
     if (MOVIMENTOS[letra]) {
@@ -286,24 +239,21 @@
     }
   });
 
-  // ================================================================
   // BOTOES
-  // ================================================================
+ 
   document.getElementById("btEmbaralhar").addEventListener("click", embaralhar);
   document.getElementById("btResetar").addEventListener("click", resetar);
 
-  // ================================================================
   // REDIMENSIONAMENTO DA JANELA
-  // ================================================================
+    
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // ================================================================
   // LOOP DE ANIMACAO
-  // ================================================================
+  
   function animate() {
     requestAnimationFrame(animate);
 
